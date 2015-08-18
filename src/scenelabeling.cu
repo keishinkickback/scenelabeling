@@ -308,8 +308,8 @@ int main() {
 	greenChannel = processor.imageChannelNormalization(&greenChannel);
 	blueChannel = processor.imageChannelNormalization(&blueChannel);
 
-	float * h_data;
-	h_data = Utility::VectorToArray(&redChannel);
+	float * h_input_data;
+	h_input_data = Utility::VectorToArray(&redChannel);
 	//END
 
 	//卷积核数据初始化
@@ -343,11 +343,15 @@ int main() {
 	int executeBatchSize = 1;
 	int inputFeaturemaps = 1;
 	int outputFeaturemaps = 1;
-	size_t workspaceSizeInByte;
+	size_t workspaceSizeInByte = 0;
 	int outputImages;
 	int outputFeaturemapsForEachImage;
 	int outputFeaturemapHeight;
 	int outputFeaturemapWidth;
+	float d_input_data;
+	float d_kernel;
+	float d_output_data;
+	void * d_cudnn_workspace = nullptr;
 
 	CuNeuralNetwork network;
 
@@ -363,121 +367,44 @@ int main() {
 			<< outputFeaturemapHeight << " " << outputFeaturemapWidth
 			<< std::endl;
 
-	//输入数据设定
-//	cudnnTensorDescriptor_t inputDataTensor;
-//	checkCUDNN(cudnnCreateTensorDescriptor(&inputDataTensor));
-//	//第一层输入为图片原始数据，看做第一层的featuremap,数量为1
-//	checkCUDNN(
-//			cudnnSetTensor4dDescriptor(inputDataTensor, CUDNN_TENSOR_NCHW,
-//					CUDNN_DATA_FLOAT, 1, 1, imageHeight, imageWidth));
+	std::cout <<inputDataTensor<< std::endl;
 
-//device上分配内存空间
-	float *d_data;
-	checkCudaErrors(
-			cudaMalloc(&d_data,
-					sizeof(float) * 1 * 1 * imageHeight * imageWidth));
+	network.syncTrainingDataToDevice(h_input_data, &d_input_data, h_kernel,
+			&d_kernel, &d_output_data, d_cudnn_workspace, executeBatchSize,
+			imageHeight, imageWidth, kernelHeight, kernelWidth,
+			inputFeaturemaps, outputFeaturemaps, outputImages,
+			outputFeaturemapsForEachImage, outputFeaturemapHeight,
+			outputFeaturemapWidth, workspaceSizeInByte);
 
-	//拷贝数据到device
-	checkCudaErrors(
-			cudaMemcpyAsync(d_data, h_data,
-					sizeof(float) * 1 * 1 * imageHeight * imageWidth,
-					cudaMemcpyHostToDevice));
+	float alpha = 1.0f, beta = 0.0f;
 
-	//卷积核设定
-	//输入featuremap为1个，即图片原始数据。输出为1个featuremap，所以需要1个卷积核。
-//	int inputFeaturemapNumber = 1;
-//	int outputFeaturemapNumber = 1;
-//	cudnnFilterDescriptor_t kernelDescriptor;
-//	checkCUDNN(cudnnCreateFilterDescriptor(&kernelDescriptor));
-//	checkCUDNN(
-//			cudnnSetFilter4dDescriptor(kernelDescriptor, CUDNN_DATA_FLOAT,
-//					outputFeaturemapNumber, inputFeaturemapNumber, kernelHeight,
-//					kernelWidth));
-	//device上分配内存空间
-	float *d_kernel;
-	checkCudaErrors(
-			cudaMalloc(&d_kernel,
-					sizeof(float) * 1 * 1 * kernelHeight * kernelWidth));
-	//拷贝数据到device
-	checkCudaErrors(
-			cudaMemcpyAsync(d_kernel, h_kernel,
-					sizeof(float) * 1 * 1 * kernelHeight * kernelWidth,
-					cudaMemcpyHostToDevice));
+	checkCUDNN(
+			cudnnConvolutionForward(cudnnHandle, &alpha, inputDataTensor,
+					&d_input_data, kernelDescriptor, &d_kernel,
+					convolutionDescriptor, algorithm, d_cudnn_workspace,
+					workspaceSizeInByte, &beta, outputDataTensor,
+					&d_output_data));
 
-//	//卷积操作设定
-//	cudnnConvolutionDescriptor_t convolutionDescriptor;
-//	checkCUDNN(cudnnCreateConvolutionDescriptor(&convolutionDescriptor));
-//	//零填充的行数与列数：0,卷积的水平和垂直的滑动长度：1,x，y向上取样的比例尺：1
-//	//不使用卷积操作，因为卷积操作要旋转卷积核，而这里不需要旋转，互相关就是无需旋转的卷积乘法
-//	checkCUDNN(
-//			cudnnSetConvolution2dDescriptor(convolutionDescriptor, 0, 0, 1, 1,
-//					1, 1, CUDNN_CROSS_CORRELATION));
-//
-//	//获取：图片数量，输出featuremap数量，featuremap的高度，featuremap的宽度
-//	int outputN, outputC, outputH, outputW;
-//	checkCUDNN(
-//			cudnnGetConvolution2dForwardOutputDim(convolutionDescriptor,
-//					inputDataTensor, kernelDescriptor, &outputN, &outputC,
-//					&outputH, &outputW));
-//
-//	//输出featuremap设定
-//	cudnnTensorDescriptor_t outputDataTensor;
-//	checkCUDNN(cudnnCreateTensorDescriptor(&outputDataTensor));
-//	checkCUDNN(
-//			cudnnSetTensor4dDescriptor(outputDataTensor, CUDNN_TENSOR_NCHW,
-//					CUDNN_DATA_FLOAT, outputN, outputC, outputH, outputW));
-	//device上分配内存空间
-	float *d_output_data;
-//	checkCudaErrors(
-//			cudaMalloc(&d_output_data,
-//					sizeof(float) * adapter.OutputData.imageNumber
-//							* adapter.OutputData.ChannelsOfImage
-//							* adapter.OutputData.featuremapHeight
-//							* adapter.OutputData.featuremapWidth));
-
-//	//选择fp算法
-//	cudnnConvolutionFwdAlgo_t algorithm;
-//	checkCUDNN(
-//			cudnnGetConvolutionForwardAlgorithm(cudnnHandle, inputDataTensor,
-//					kernelDescriptor, convolutionDescriptor, outputDataTensor,
-//					CUDNN_CONVOLUTION_FWD_PREFER_FASTEST, 0, &algorithm));
-//
-//	//获取workspace的大小
-//	size_t workspaceSizeInByte = 0;
-//	checkCUDNN(
-//			cudnnGetConvolutionForwardWorkspaceSize(cudnnHandle,
-//					inputDataTensor, kernelDescriptor, convolutionDescriptor,
-//					outputDataTensor, algorithm, &workspaceSizeInByte));
-	//device上分配内存空间
-//void *d_cudnn_workspace = nullptr;
-//																	checkCudaErrors(cudaMalloc(&d_cudnn_workspace, workspaceSizeInByte));
-//
-//	checkCudaErrors(cudaDeviceSynchronize());
-//
-//	//fp
-//	float alpha = 1.0f, beta = 0.0f;
-//
-//	checkCUDNN(
-//			cudnnConvolutionForward(cudnnHandle, &alpha, inputDataTensor,
-//					d_data, kernelDescriptor, d_kernel, convolutionDescriptor,
-//					algorithm, d_cudnn_workspace, workspaceSizeInByte, &beta,
-//					outputDataTensor, d_output_data));
+//	float * h_output_data = new float[outputImages
+//			* outputFeaturemapsForEachImage * outputFeaturemapHeight
+//			* outputFeaturemapWidth];
 //
 //	//定义动态float数组
 //	float * h_output_data = new float[outputN * outputC * outputH * outputH];
 //
 //	checkCudaErrors(
-//			cudaMemcpyAsync(h_output_data, d_output_data,
-//					sizeof(float) * outputN * outputC * outputH * outputH,
+//			cudaMemcpyAsync(h_output_data, &d_output_data,
+//					sizeof(float) * outputImages * outputFeaturemapsForEachImage
+//							* outputFeaturemapHeight * outputFeaturemapWidth,
 //					cudaMemcpyDeviceToHost));
 //
 //	checkCudaErrors(cudaDeviceSynchronize());
 //
-//	TestCase::TestCase1(h_data, h_kernel);
+//	TestCase::TestCase1(h_output_data, h_kernel);
 //
 //	std::cout << " test result : " << h_output_data[0] << std::endl;
 
-	//checkCUDNN(cudnnDestroyTensorDescriptor(redChannelDataTensor));
+//checkCUDNN(cudnnDestroyTensorDescriptor(redChannelDataTensor));
 
 }
 

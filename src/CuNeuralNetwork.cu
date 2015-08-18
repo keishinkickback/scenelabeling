@@ -108,3 +108,49 @@ void CuNeuralNetwork::initializeConvolutionalLayerTensorDescriptor(
 					*algorithm, workspaceSizeInByte));
 
 }
+
+void CuNeuralNetwork::syncTrainingDataToDevice(float * h_input_data,
+		float * d_input_data, float * h_kernel, float * d_kernel,
+		float * d_output_data, void * d_cudnn_workspace, int executeBatchSize,
+		int imageHeight, int imageWidth, int kernelHeight, int kernelWidth,
+		int inputFeaturemaps, int outputFeaturemaps, int outputImages,
+		int outputFeaturemapsForEachImage, int outputFeaturemapHeight,
+		int outputFeaturemapWidth, size_t workspaceSizeInByte) {
+
+	//输入层数据同步
+	checkCudaErrors(
+			cudaMalloc(&d_input_data,
+					sizeof(float) * executeBatchSize * inputFeaturemaps
+							* imageHeight * imageWidth));
+	checkCudaErrors(
+			cudaMemcpyAsync(d_input_data, h_input_data,
+					sizeof(float) * executeBatchSize * inputFeaturemaps
+							* imageHeight * imageWidth,
+					cudaMemcpyHostToDevice));
+
+	//卷积核数据同步
+	checkCudaErrors(
+			cudaMalloc(&d_kernel,
+					sizeof(float) * outputFeaturemaps * kernelHeight
+							* kernelWidth));
+	checkCudaErrors(
+			cudaMemcpyAsync(d_kernel, h_kernel,
+					sizeof(float) * outputFeaturemaps * kernelHeight
+							* kernelWidth, cudaMemcpyHostToDevice));
+
+	//输出层数据同步
+	//输出层只做空间分配，不做数据同步
+
+	checkCudaErrors(
+			cudaMalloc(&d_output_data,
+					sizeof(float) * outputImages * outputFeaturemapsForEachImage
+							* outputFeaturemapHeight * outputFeaturemapWidth));
+
+	std::cout << outputImages << std::endl;
+
+	//workspace空间分配
+	checkCudaErrors(cudaMalloc(&d_cudnn_workspace, workspaceSizeInByte));
+
+	checkCudaErrors(cudaDeviceSynchronize());
+
+}
