@@ -132,111 +132,9 @@ public:
 			kernel->at(i) = static_cast<float>(distribution(generator));
 		}
 
-//		for(int i = 0 ; i < kernel->size();i++){
-//			std::cout << kernel->at(i) << std::endl;
-//		}
-
 	}
 
 };
-
-//class CuNeuralNetwork {
-//
-//public:
-//
-//	//input
-//	cudnnHandle_t *cudnnHandle;
-//	cudnnTensorDescriptor_t * inputDataTensorDescriptor;
-//	cudnnFilterDescriptor_t * kernelDescriptor;
-//	cudnnConvolutionDescriptor_t * convolutionDescriptor;
-//	cudnnTensorDescriptor_t * outputDataTensorDescriptor;
-//	int executeBatchSize;
-//	int imageHeight;
-//	int imageWidth;
-//	int kernelHeight;
-//	int kernelWidth;
-//	int inputChannels;
-//	int outputChannels;
-//
-//	//output
-//	size_t workspaceSizeInByte;
-//	cudnnConvolutionFwdAlgo_t * algorithm;
-//	int outputImageNumber;
-//	int outputChannelsOfEachImage;
-//	int outputFeaturemapHeight;
-//	int outputFeaturemapWidth;
-//
-//public:
-//
-//	size_t initializeConvolutionalLayerTensorDescriptor(
-//			cudnnHandle_t *cudnnHandle,
-//			cudnnTensorDescriptor_t * inputDataTensorDescriptor,
-//			cudnnFilterDescriptor_t * kernelDescriptor,
-//			cudnnConvolutionDescriptor_t * convolutionDescriptor,
-//			cudnnTensorDescriptor_t * outputDataTensorDescriptor,
-//			cudnnConvolutionFwdAlgo_t * algorithm, int executeBatchSize,
-//			int imageHeight, int imageWidth, int kernelHeight, int kernelWidth,
-//			int inputChannels, int outputChannels) {
-//
-//		//输入数据设定
-//		checkCUDNN(cudnnCreateTensorDescriptor(inputDataTensorDescriptor));
-//		checkCUDNN(
-//				cudnnSetTensor4dDescriptor(*inputDataTensorDescriptor,
-//						CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, executeBatchSize,
-//						inputChannels, imageHeight, imageWidth));
-//
-//		//卷积核设定
-//		checkCUDNN(cudnnCreateFilterDescriptor(kernelDescriptor));
-//		checkCUDNN(
-//				cudnnSetFilter4dDescriptor(*kernelDescriptor, CUDNN_DATA_FLOAT,
-//						outputChannels, outputChannels, kernelHeight,
-//						kernelWidth));
-//
-//		//卷积操作设定
-//		checkCUDNN(cudnnCreateConvolutionDescriptor(convolutionDescriptor));
-//		//零填充的行数与列数：0 卷积的水平和垂直的滑动长度：1 x，y向上取样的比例尺：1
-//		//不使用卷积操作，因为卷积操作要旋转卷积核，而互相关操作无需旋转卷积核
-//		checkCUDNN(
-//				cudnnSetConvolution2dDescriptor(*convolutionDescriptor, 0, 0, 1,
-//						1, 1, 1, CUDNN_CROSS_CORRELATION));
-//
-//		//输出数据设定
-//		//获取：图片数量，输出featuremap数量，featuremap的高度，featuremap的宽度
-//
-//		checkCUDNN(
-//				cudnnGetConvolution2dForwardOutputDim(*convolutionDescriptor,
-//						*inputDataTensorDescriptor, *kernelDescriptor,
-//						&this->imageNumber, &this->ChannelsOfImage,
-//						&this->featuremapHeight, &this->featuremapWidth));
-//
-//		checkCUDNN(cudnnCreateTensorDescriptor(outputDataTensorDescriptor));
-//		checkCUDNN(
-//				cudnnSetTensor4dDescriptor(*outputDataTensorDescriptor,
-//						CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
-//						outputData->imageNumber, outputData->ChannelsOfImage,
-//						outputData->featuremapHeight,
-//						outputData->featuremapWidth));
-//
-//		//选择FP算法
-//		checkCUDNN(
-//				cudnnGetConvolutionForwardAlgorithm(*cudnnHandle,
-//						*inputDataTensorDescriptor, *kernelDescriptor,
-//						*convolutionDescriptor, *outputDataTensorDescriptor,
-//						CUDNN_CONVOLUTION_FWD_PREFER_FASTEST, 0, algorithm));
-//
-//		//获取workspace的大小
-//		size_t workspaceSizeInByte = 0;
-//		checkCUDNN(
-//				cudnnGetConvolutionForwardWorkspaceSize(*cudnnHandle,
-//						*inputDataTensorDescriptor, *kernelDescriptor,
-//						*convolutionDescriptor, *outputDataTensorDescriptor,
-//						*algorithm, &workspaceSizeInByte));
-//
-//		return workspaceSizeInByte;
-//
-//	}
-//
-//};
 
 class Utility {
 
@@ -271,7 +169,7 @@ public:
 		sum += data[1081] * kernel[7];
 		sum += data[1082] * kernel[8];
 
-		std::cout << " Ground Truth : " << sum << std::endl;
+		std::cout << " CPU result : " << sum << std::endl;
 
 	}
 
@@ -296,33 +194,26 @@ int main() {
 	getcwd(imagePath, filePathMaxLength);
 	strcat(imagePath, "/trainingset/");
 	strcat(imagePath, "train1.png");
-
 	std::vector<float> redChannel;
 	std::vector<float> greenChannel;
 	std::vector<float> blueChannel;
-
+	float * h_data;
 	ImageProcessor processor;
 	processor.readRGBImage(imagePath, &redChannel, &greenChannel, &blueChannel);
-
 	redChannel = processor.imageChannelNormalization(&redChannel);
 	greenChannel = processor.imageChannelNormalization(&greenChannel);
 	blueChannel = processor.imageChannelNormalization(&blueChannel);
+	h_data = Utility::VectorToArray(&redChannel);
 
-	float * h_input_data;
-	h_input_data = Utility::VectorToArray(&redChannel);
-	//END
-
-	//卷积核数据初始化
+	//卷积核初始化
 	KernelGenerator generator;
+	float * h_kernel;
 	std::vector<float> kernel(kernelHeight * kernelWidth);
 	generator.initializeKernelUsingXavierAlgorithm(kernelHeight, kernelWidth, 1,
 			&kernel);
-
-	float * h_kernel;
 	h_kernel = Utility::VectorToArray(&kernel);
-	//END
 
-	//GPU的查询与选择
+	//GPU设定
 	int GPUs;
 	checkCudaErrors(cudaGetDeviceCount(&GPUs));
 	if (GPUs > 0) {
@@ -335,76 +226,81 @@ int main() {
 	cudnnHandle_t cudnnHandle = NULL;
 	cudnnCreate(&cudnnHandle);
 
-	cudnnTensorDescriptor_t inputDataTensor;
-	cudnnFilterDescriptor_t kernelDescriptor;
-	cudnnConvolutionDescriptor_t convolutionDescriptor;
-	cudnnTensorDescriptor_t outputDataTensor;
-	cudnnConvolutionFwdAlgo_t algorithm;
-	int executeBatchSize = 1;
-	int inputFeaturemaps = 1;
-	int outputFeaturemaps = 1;
-	size_t workspaceSizeInByte = 0;
-	int outputImages;
-	int outputFeaturemapsForEachImage;
-	int outputFeaturemapHeight;
-	int outputFeaturemapWidth;
-	float d_input_data;
-	float d_kernel;
-	float d_output_data;
-	void * d_cudnn_workspace = nullptr;
-
 	CuNeuralNetwork network;
 
-	network.initializeConvolutionalLayerTensorDescriptor(&cudnnHandle,
-			&inputDataTensor, &kernelDescriptor, &convolutionDescriptor,
-			&outputDataTensor, &algorithm, executeBatchSize, imageWidth,
-			imageHeight, kernelHeight, kernelWidth, inputFeaturemaps,
-			outputFeaturemaps, &workspaceSizeInByte, &outputImages,
-			&outputFeaturemapsForEachImage, &outputFeaturemapHeight,
-			&outputFeaturemapWidth);
+	//输入数据设定
+	cudnnTensorDescriptor_t inputDataTensor;
+	float * d_data = network.createInputDataLayer(h_data, &inputDataTensor, 1,
+			1, imageHeight, imageWidth);
 
-	std::cout << outputImages << " " << outputFeaturemapsForEachImage << " "
-			<< outputFeaturemapHeight << " " << outputFeaturemapWidth
-			<< std::endl;
+	//卷积核设定
+	//输入featuremap为1个，即图片原始数据。输出为1个featuremap，所以需要1个卷积核。
+	int inputFeaturemaps = 1;
+	int outputFeaturemaps = 1;
+	cudnnFilterDescriptor_t kernelDescriptor;
+	float * d_kernel = network.createKernel(h_kernel, &kernelDescriptor,
+			inputFeaturemaps, outputFeaturemaps, kernelHeight, kernelWidth);
 
-	std::cout <<inputDataTensor<< std::endl;
+	//卷积操作设定
+	cudnnConvolutionDescriptor_t convolutionDescriptor;
+	checkCUDNN(cudnnCreateConvolutionDescriptor(&convolutionDescriptor));
+	//零填充的行数与列数：0,卷积的水平和垂直的滑动长度：1,x，y向上取样的比例尺：1
+	//不使用卷积操作，因为卷积操作要旋转卷积核，而这里不需要旋转，互相关就是无需旋转的卷积乘法。
+	checkCUDNN(
+			cudnnSetConvolution2dDescriptor(convolutionDescriptor, 0, 0, 1, 1,
+					1, 1, CUDNN_CROSS_CORRELATION));
 
-	network.syncTrainingDataToDevice(h_input_data, &d_input_data, h_kernel,
-			&d_kernel, &d_output_data, d_cudnn_workspace, executeBatchSize,
-			imageHeight, imageWidth, kernelHeight, kernelWidth,
-			inputFeaturemaps, outputFeaturemaps, outputImages,
-			outputFeaturemapsForEachImage, outputFeaturemapHeight,
-			outputFeaturemapWidth, workspaceSizeInByte);
+	//输出数据设定
+	cudnnTensorDescriptor_t outputDataTensor;
+	OutputDim outputDim;
+	float *d_output_data = network.createOutputDataLayer(&inputDataTensor,
+			&kernelDescriptor, &convolutionDescriptor, &outputDataTensor,
+			&outputDim);
 
+	//选择FP算法
+	cudnnConvolutionFwdAlgo_t algorithm;
+	checkCUDNN(
+			cudnnGetConvolutionForwardAlgorithm(cudnnHandle, inputDataTensor,
+					kernelDescriptor, convolutionDescriptor, outputDataTensor,
+					CUDNN_CONVOLUTION_FWD_PREFER_FASTEST, 0, &algorithm));
+
+	//设置workspace的大小
+	size_t workspaceSizeInByte = 0;
+	checkCUDNN(
+			cudnnGetConvolutionForwardWorkspaceSize(cudnnHandle,
+					inputDataTensor, kernelDescriptor, convolutionDescriptor,
+					outputDataTensor, algorithm, &workspaceSizeInByte));
+void *d_cudnn_workspace = nullptr;
+		checkCudaErrors(cudaMalloc(&d_cudnn_workspace, workspaceSizeInByte));
+
+	checkCudaErrors(cudaDeviceSynchronize());
+
+	//FP计算
 	float alpha = 1.0f, beta = 0.0f;
-
 	checkCUDNN(
 			cudnnConvolutionForward(cudnnHandle, &alpha, inputDataTensor,
-					&d_input_data, kernelDescriptor, &d_kernel,
-					convolutionDescriptor, algorithm, d_cudnn_workspace,
-					workspaceSizeInByte, &beta, outputDataTensor,
-					&d_output_data));
+					d_data, kernelDescriptor, d_kernel, convolutionDescriptor,
+					algorithm, d_cudnn_workspace, workspaceSizeInByte, &beta,
+					outputDataTensor, d_output_data));
 
-//	float * h_output_data = new float[outputImages
-//			* outputFeaturemapsForEachImage * outputFeaturemapHeight
-//			* outputFeaturemapWidth];
-//
-//	//定义动态float数组
-//	float * h_output_data = new float[outputN * outputC * outputH * outputH];
-//
-//	checkCudaErrors(
-//			cudaMemcpyAsync(h_output_data, &d_output_data,
-//					sizeof(float) * outputImages * outputFeaturemapsForEachImage
-//							* outputFeaturemapHeight * outputFeaturemapWidth,
-//					cudaMemcpyDeviceToHost));
-//
-//	checkCudaErrors(cudaDeviceSynchronize());
-//
-//	TestCase::TestCase1(h_output_data, h_kernel);
-//
-//	std::cout << " test result : " << h_output_data[0] << std::endl;
+	//输出数据回传
+	float * h_output_data =
+			new float[outputDim.outputImages
+					* outputDim.outputFeaturemapsForEachImage
+					* outputDim.outputFeaturemapHeight
+					* outputDim.outputFeaturemapWidth];
+	checkCudaErrors(
+			cudaMemcpyAsync(h_output_data, d_output_data,
+					sizeof(float) * outputDim.outputImages
+							* outputDim.outputFeaturemapsForEachImage
+							* outputDim.outputFeaturemapHeight
+							* outputDim.outputFeaturemapWidth,
+					cudaMemcpyDeviceToHost));
 
-//checkCUDNN(cudnnDestroyTensorDescriptor(redChannelDataTensor));
+	//测试用例1
+	TestCase::TestCase1(h_data, h_kernel);
+	std::cout << " GPU result : " << h_output_data[0] << std::endl;
+
+	//checkCUDNN(cudnnDestroyTensorDescriptor(redChannelDataTensor));
 
 }
-
