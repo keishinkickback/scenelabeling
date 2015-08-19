@@ -40,6 +40,11 @@ public:
 			cudnnConvolutionDescriptor_t * convolutionDescriptor,
 			cudnnTensorDescriptor_t * outputDataTensorDescriptor,
 			OutputDim * outputDim);
+
+	float * addBiasUnits(float * h_bias,
+			cudnnTensorDescriptor_t * biasTensorDescriptor,
+			int outputFeaturemaps, int kernelHeight, int kernelWidth);
+
 };
 
 #endif /* CUNEURALNETWORK_H_ */

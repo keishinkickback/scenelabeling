@@ -134,6 +134,24 @@ public:
 
 	}
 
+	void initializeBiasUsingXavierAlgorithm(int kernelHeight, int kernelWeight,
+			int channelNumber, std::vector<float> * bias) {
+
+		//随机数生成器初始化
+		std::random_device rd;
+		//使用马特赛特旋转演算法伪随机数生成器
+		std::mt19937 generator(rd());
+
+		float core = sqrt(3.0f / (kernelHeight * kernelWeight * channelNumber));
+
+		std::uniform_real_distribution<> distribution(-core, core);
+
+		for (int i = 0; i < bias->size(); i++) {
+			bias->at(i) = static_cast<float>(distribution(generator));
+		}
+
+	}
+
 };
 
 class Utility {
@@ -155,7 +173,8 @@ public:
 class TestCase {
 
 public:
-	static void TestCase1(float * data, float * kernel) {
+	static void TestCase1(float * data, float * kernel, float * bias,
+			float * output_data) {
 
 		float sum = 0.0f;
 
@@ -170,6 +189,8 @@ public:
 		sum += data[1082] * kernel[8];
 
 		std::cout << " CPU result : " << sum << std::endl;
+		std::cout << " bias unit : " << bias[0] << std::endl;
+		std::cout << " GPU result : " << output_data[0] << std::endl;
 
 	}
 
@@ -188,6 +209,9 @@ int main() {
 	int imageWidth = 540;
 	int kernelHeight = 3;
 	int kernelWidth = 3;
+	//输入featuremap为1个，即图片原始数据。输出为1个featuremap，所以需要1个卷积核。
+	int inputFeaturemaps = 1;
+	int outputFeaturemaps = 1;
 
 	//读取图片到RGB三个通道
 	char imagePath[filePathMaxLength];
@@ -197,21 +221,29 @@ int main() {
 	std::vector<float> redChannel;
 	std::vector<float> greenChannel;
 	std::vector<float> blueChannel;
-	float * h_data;
+	float * h_input_data;
 	ImageProcessor processor;
 	processor.readRGBImage(imagePath, &redChannel, &greenChannel, &blueChannel);
 	redChannel = processor.imageChannelNormalization(&redChannel);
 	greenChannel = processor.imageChannelNormalization(&greenChannel);
 	blueChannel = processor.imageChannelNormalization(&blueChannel);
-	h_data = Utility::VectorToArray(&redChannel);
+	h_input_data = Utility::VectorToArray(&redChannel);
 
 	//卷积核初始化
 	KernelGenerator generator;
 	float * h_kernel;
 	std::vector<float> kernel(kernelHeight * kernelWidth);
-	generator.initializeKernelUsingXavierAlgorithm(kernelHeight, kernelWidth, 1,
-			&kernel);
+	generator.initializeKernelUsingXavierAlgorithm(kernelHeight, kernelWidth,
+			outputFeaturemaps, &kernel);
 	h_kernel = Utility::VectorToArray(&kernel);
+
+	//偏置项初始化
+	//与卷积核同样的方法，同样的数量
+	float * h_bias;
+	std::vector<float> bias(kernelHeight * kernelWidth);
+	generator.initializeBiasUsingXavierAlgorithm(kernelHeight, kernelWidth,
+			outputFeaturemaps, &bias);
+	h_bias = Utility::VectorToArray(&bias);
 
 	//GPU设定
 	int GPUs;
@@ -230,13 +262,10 @@ int main() {
 
 	//输入数据设定
 	cudnnTensorDescriptor_t inputDataTensor;
-	float * d_data = network.createInputDataLayer(h_data, &inputDataTensor, 1,
-			1, imageHeight, imageWidth);
+	float * d_data = network.createInputDataLayer(h_input_data,
+			&inputDataTensor, 1, 1, imageHeight, imageWidth);
 
 	//卷积核设定
-	//输入featuremap为1个，即图片原始数据。输出为1个featuremap，所以需要1个卷积核。
-	int inputFeaturemaps = 1;
-	int outputFeaturemaps = 1;
 	cudnnFilterDescriptor_t kernelDescriptor;
 	float * d_kernel = network.createKernel(h_kernel, &kernelDescriptor,
 			inputFeaturemaps, outputFeaturemaps, kernelHeight, kernelWidth);
@@ -270,18 +299,31 @@ int main() {
 			cudnnGetConvolutionForwardWorkspaceSize(cudnnHandle,
 					inputDataTensor, kernelDescriptor, convolutionDescriptor,
 					outputDataTensor, algorithm, &workspaceSizeInByte));
-void *d_cudnn_workspace = nullptr;
-		checkCudaErrors(cudaMalloc(&d_cudnn_workspace, workspaceSizeInByte));
+	void *d_cudnn_workspace = nullptr;
+	checkCudaErrors(cudaMalloc(&d_cudnn_workspace, workspaceSizeInByte));
 
 	checkCudaErrors(cudaDeviceSynchronize());
 
 	//FP计算
 	float alpha = 1.0f, beta = 0.0f;
+
+	//卷积运算
 	checkCUDNN(
 			cudnnConvolutionForward(cudnnHandle, &alpha, inputDataTensor,
 					d_data, kernelDescriptor, d_kernel, convolutionDescriptor,
 					algorithm, d_cudnn_workspace, workspaceSizeInByte, &beta,
 					outputDataTensor, d_output_data));
+
+	//偏置项设定
+	cudnnTensorDescriptor_t biasTensorDescriptor;
+	float *d_bias = network.addBiasUnits(h_bias, &biasTensorDescriptor,
+			outputFeaturemaps, kernelHeight, kernelWidth);
+
+	//加上偏置项
+	checkCUDNN(
+			cudnnAddTensor(cudnnHandle, CUDNN_ADD_SAME_C, &alpha,
+					biasTensorDescriptor, d_bias, &alpha, outputDataTensor,
+					d_output_data));
 
 	//输出数据回传
 	float * h_output_data =
@@ -298,8 +340,7 @@ void *d_cudnn_workspace = nullptr;
 					cudaMemcpyDeviceToHost));
 
 	//测试用例1
-	TestCase::TestCase1(h_data, h_kernel);
-	std::cout << " GPU result : " << h_output_data[0] << std::endl;
+	TestCase::TestCase1(h_input_data, h_kernel, h_bias, h_output_data);
 
 	//checkCUDNN(cudnnDestroyTensorDescriptor(redChannelDataTensor));
 

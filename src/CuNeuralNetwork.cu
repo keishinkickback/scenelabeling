@@ -126,3 +126,28 @@ float * CuNeuralNetwork::createOutputDataLayer(
 
 }
 
+float * CuNeuralNetwork::addBiasUnits(float * h_bias,
+		cudnnTensorDescriptor_t * biasTensorDescriptor, int outputFeaturemaps,
+		int kernelHeight, int kernelWidth) {
+
+	//偏置项设定
+	checkCUDNN(cudnnCreateTensorDescriptor(biasTensorDescriptor));
+	checkCUDNN(
+			cudnnSetTensor4dDescriptor(*biasTensorDescriptor, CUDNN_TENSOR_NCHW,
+					CUDNN_DATA_FLOAT, 1, outputFeaturemaps, 1, 1));
+
+	//分配内存
+	float *d_bias;
+	checkCudaErrors(
+			cudaMalloc(&d_bias,
+					sizeof(float) * outputFeaturemaps * kernelHeight
+							* kernelWidth));
+	checkCudaErrors(
+			cudaMemcpyAsync(d_bias, h_bias,
+					sizeof(float) * outputFeaturemaps * kernelHeight
+							* kernelWidth, cudaMemcpyHostToDevice));
+
+	return d_bias;
+
+}
+
