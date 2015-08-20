@@ -299,8 +299,8 @@ int main() {
 			cudnnGetConvolutionForwardWorkspaceSize(cudnnHandle,
 					inputDataTensor, kernelDescriptor, convolutionDescriptor,
 					outputDataTensor, algorithm, &workspaceSizeInByte));
-	void *d_cudnn_workspace = nullptr;
-	checkCudaErrors(cudaMalloc(&d_cudnn_workspace, workspaceSizeInByte));
+void *d_cudnn_workspace = nullptr;
+				checkCudaErrors(cudaMalloc(&d_cudnn_workspace, workspaceSizeInByte));
 
 	checkCudaErrors(cudaDeviceSynchronize());
 
@@ -320,12 +320,53 @@ int main() {
 			outputFeaturemaps, kernelHeight, kernelWidth);
 
 	//加上偏置项
+	alpha = 1.0f, beta = 1.0f;
 	checkCUDNN(
 			cudnnAddTensor(cudnnHandle, CUDNN_ADD_SAME_C, &alpha,
-					biasTensorDescriptor, d_bias, &alpha, outputDataTensor,
+					biasTensorDescriptor, d_bias, &beta, outputDataTensor,
 					d_output_data));
 
-	//输出数据回传
+	//池化
+	cudnnPoolingDescriptor_t poolingDescriptor;
+	cudnnTensorDescriptor_t poolingDataTensorDescriptor;
+	int poolingWindowHeight = 3;
+	int poolingWindowWidth = 3;
+	int poolingVerticalStride = 1;
+	int poolingHorizontalStride = 1;
+	float * d_pooling_output_data;
+
+	checkCudaErrors(
+			cudaMalloc(&d_pooling_output_data,
+					sizeof(float) * outputDim.outputFeaturemapsForEachImage
+							* ((outputDim.outputFeaturemapHeight
+									- poolingWindowHeight)
+									/ poolingHorizontalStride + 1)
+							* ((outputDim.outputFeaturemapWidth
+									- poolingWindowWidth)
+									/ poolingVerticalStride + 1)));
+
+	checkCUDNN(cudnnCreatePoolingDescriptor(&poolingDescriptor));
+	checkCUDNN(
+			cudnnSetPooling2dDescriptor(poolingDescriptor, CUDNN_POOLING_MAX,
+					poolingWindowHeight, poolingWindowWidth, 0, 0,
+					poolingVerticalStride, poolingHorizontalStride));
+
+	checkCUDNN(cudnnCreateTensorDescriptor(&poolingDataTensorDescriptor));
+	checkCUDNN(
+			cudnnSetTensor4dDescriptor(poolingDataTensorDescriptor,
+					CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, outputDim.outputImages,
+					outputDim.outputFeaturemapsForEachImage,
+					((outputDim.outputFeaturemapHeight - poolingWindowHeight)
+							/ poolingHorizontalStride + 1),
+					((outputDim.outputFeaturemapWidth - poolingWindowWidth)
+							/ poolingVerticalStride + 1)));
+
+	checkCUDNN(
+			cudnnPoolingForward(cudnnHandle, poolingDescriptor, &alpha,
+					outputDataTensor, d_output_data, &beta,
+					poolingDataTensorDescriptor, d_pooling_output_data));
+
+	//d_output_data输出数据回传
 	float * h_output_data =
 			new float[outputDim.outputImages
 					* outputDim.outputFeaturemapsForEachImage
