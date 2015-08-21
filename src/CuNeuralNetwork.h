@@ -45,6 +45,14 @@ public:
 			cudnnTensorDescriptor_t * biasTensorDescriptor,
 			int outputFeaturemaps, int kernelHeight, int kernelWidth);
 
+	float * createPoolingLayer(float * d_output_data,
+			cudnnTensorDescriptor_t * inputDataTensorDescriptor,
+			cudnnPoolingDescriptor_t * poolingDescriptor,
+			cudnnTensorDescriptor_t * poolingDataTensorDescriptor,
+			OutputDim * outputDim, int poolingWindowHeight,
+			int poolingWindowWidth, int poolingVerticalStride,
+			int poolingHorizontalStride, OutputDim * poolingOutputDim);
+
 };
 
 #endif /* CUNEURALNETWORK_H_ */

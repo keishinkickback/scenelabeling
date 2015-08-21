@@ -151,3 +151,63 @@ float * CuNeuralNetwork::addBiasUnits(float * h_bias,
 
 }
 
+float * CuNeuralNetwork::createPoolingLayer(float * d_output_data,
+		cudnnTensorDescriptor_t * inputDataTensorDescriptor,
+		cudnnPoolingDescriptor_t * poolingDescriptor,
+		cudnnTensorDescriptor_t * poolingDataTensorDescriptor,
+		OutputDim * outputDim, int poolingWindowHeight, int poolingWindowWidth,
+		int poolingVerticalStride, int poolingHorizontalStride,
+		OutputDim * poolingOutputDim) {
+
+	float * d_pooling_output_data;
+	int poolingOutputDataHeight = (outputDim->outputFeaturemapHeight
+			- poolingWindowHeight) / poolingHorizontalStride + 1;
+	int poolingOutputDataWidth = (outputDim->outputFeaturemapWidth
+			- poolingWindowWidth) / poolingVerticalStride + 1;
+
+	checkCudaErrors(
+			cudaMalloc(&d_pooling_output_data,
+					sizeof(float) * outputDim->outputImages
+							* outputDim->outputFeaturemapsForEachImage
+							* poolingOutputDataHeight
+							* poolingOutputDataWidth));
+
+	checkCUDNN(cudnnCreatePoolingDescriptor(poolingDescriptor));
+	checkCUDNN(
+			cudnnSetPooling2dDescriptor(*poolingDescriptor, CUDNN_POOLING_MAX,
+					poolingWindowHeight, poolingWindowWidth, 0, 0,
+					poolingVerticalStride, poolingHorizontalStride));
+
+	//没有实装这个方法？
+//	checkCUDNN(
+//			cudnnGetPooling2dForwardOutputDim(
+//					*poolingDescriptor,
+//					*inputDataTensorDescriptor,
+//					&poolingOutputDim->outputImages,
+//					&poolingOutputDim->outputFeaturemapsForEachImage,
+//					&poolingOutputDim->outputFeaturemapHeight,
+//					&poolingOutputDim->outputFeaturemapWidth));
+//
+//	std::cout << poolingOutputDim->outputImages << " "
+//			<< poolingOutputDim->outputFeaturemapsForEachImage << " "
+//			<< poolingOutputDim->outputFeaturemapHeight << " "
+//			<< poolingOutputDim->outputFeaturemapWidth << std::endl;
+
+	poolingOutputDim->outputImages = outputDim->outputImages;
+	poolingOutputDim->outputFeaturemapsForEachImage =
+			outputDim->outputFeaturemapsForEachImage;
+	poolingOutputDim->outputFeaturemapHeight = poolingOutputDataHeight;
+	poolingOutputDim->outputFeaturemapWidth = poolingOutputDataWidth;
+
+	checkCUDNN(cudnnCreateTensorDescriptor(poolingDataTensorDescriptor));
+	checkCUDNN(
+			cudnnSetTensor4dDescriptor(*poolingDataTensorDescriptor,
+					CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
+					outputDim->outputImages,
+					outputDim->outputFeaturemapsForEachImage,
+					poolingOutputDataHeight, poolingOutputDataWidth));
+
+	return d_pooling_output_data;
+
+}
+

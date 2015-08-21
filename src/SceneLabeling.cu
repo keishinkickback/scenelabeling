@@ -21,6 +21,10 @@
 #include <algorithm>
 
 #include "CuNeuralNetwork.h"
+#include "ImageProcessor.h"
+#include "KernelGenerator.h"
+#include "Utility.h"
+#include "TestCase.h"
 
 #include <vector>
 
@@ -53,154 +57,6 @@
       FatalError(_error.str());                                        \
     }                                                                  \
 } while(0)
-
-class ImageProcessor {
-
-public:
-	void readRGBImage(char *imagePath, std::vector<float> *redChannel,
-			std::vector<float> *greenChannel, std::vector<float> *blueChannel) {
-
-		FreeImage_Initialise(TRUE);
-
-		FIBITMAP* fib;
-		fib = FreeImage_Load(FIF_PNG, imagePath, PNG_DEFAULT);
-		int width = FreeImage_GetWidth(fib);
-		int height = FreeImage_GetHeight(fib);
-
-		RGBQUAD color;
-
-		for (int x = 0; x < width; x++) {
-
-			for (int y = 0; y < height; y++) {
-
-				FreeImage_GetPixelColor(fib, x, y, &color);
-
-				float blue = color.rgbBlue;
-				float green = color.rgbGreen;
-				float red = color.rgbRed;
-				redChannel->push_back(red);
-				greenChannel->push_back(green);
-				blueChannel->push_back(blue);
-
-			}
-
-		}
-
-		FreeImage_Unload(fib);
-		FreeImage_DeInitialise();
-	}
-
-	std::vector<float> imageChannelNormalization(std::vector<float> *channel) {
-
-		float maxColorChannel = *std::max_element(channel->begin(),
-				channel->end());
-		float minColorChannel = *std::min_element(channel->begin(),
-				channel->end());
-
-		std::vector<float> result;
-
-		for (int i = 0; i < channel->size(); i++) {
-			result.push_back(
-					(channel->at(i) - minColorChannel)
-							/ (maxColorChannel - minColorChannel));
-		}
-
-		channel->clear();
-
-		return result;
-
-	}
-};
-
-class KernelGenerator {
-
-public:
-
-	void initializeKernelUsingXavierAlgorithm(int kernelHeight,
-			int kernelWeight, int channelNumber, std::vector<float> * kernel) {
-
-		//随机数生成器初始化
-		std::random_device rd;
-		//使用马特赛特旋转演算法伪随机数生成器
-		std::mt19937 generator(rd());
-
-		float core = sqrt(3.0f / (kernelHeight * kernelWeight * channelNumber));
-
-		std::uniform_real_distribution<> distribution(-core, core);
-
-		for (int i = 0; i < kernel->size(); i++) {
-			kernel->at(i) = static_cast<float>(distribution(generator));
-		}
-
-	}
-
-	void initializeBiasUsingXavierAlgorithm(int kernelHeight, int kernelWeight,
-			int channelNumber, std::vector<float> * bias) {
-
-		//随机数生成器初始化
-		std::random_device rd;
-		//使用马特赛特旋转演算法伪随机数生成器
-		std::mt19937 generator(rd());
-
-		float core = sqrt(3.0f / (kernelHeight * kernelWeight * channelNumber));
-
-		std::uniform_real_distribution<> distribution(-core, core);
-
-		for (int i = 0; i < bias->size(); i++) {
-			bias->at(i) = static_cast<float>(distribution(generator));
-		}
-
-	}
-
-};
-
-class Utility {
-
-public:
-	static float* VectorToArray(std::vector<float> * input) {
-
-		float * array;
-		array = new float[input->size()];
-
-		for (int i = 0; i < input->size(); i++) {
-			array[i] = input->at(i);
-		}
-
-		return array;
-	}
-};
-
-class TestCase {
-
-public:
-	static void TestCase1(float * data, float * kernel, float * bias,
-			float * output_data) {
-
-		float sum = 0.0f;
-
-		sum += data[0] * kernel[0];
-		sum += data[1] * kernel[1];
-		sum += data[2] * kernel[2];
-		sum += data[540] * kernel[3];
-		sum += data[541] * kernel[4];
-		sum += data[542] * kernel[5];
-		sum += data[1080] * kernel[6];
-		sum += data[1081] * kernel[7];
-		sum += data[1082] * kernel[8];
-
-		std::cout << " CPU result : " << sum << std::endl;
-		std::cout << " bias unit : " << bias[0] << std::endl;
-		std::cout << " GPU result : " << output_data[0] << std::endl;
-
-	}
-
-	static void printDynamicArray(float * array, int length) {
-		for (int i = 0; i < length; i++) {
-			std::cout << array[i] << std::endl;
-		}
-	}
-
-};
 
 int main() {
 
@@ -299,8 +155,8 @@ int main() {
 			cudnnGetConvolutionForwardWorkspaceSize(cudnnHandle,
 					inputDataTensor, kernelDescriptor, convolutionDescriptor,
 					outputDataTensor, algorithm, &workspaceSizeInByte));
-void *d_cudnn_workspace = nullptr;
-				checkCudaErrors(cudaMalloc(&d_cudnn_workspace, workspaceSizeInByte));
+	void *d_cudnn_workspace = nullptr;
+	checkCudaErrors(cudaMalloc(&d_cudnn_workspace, workspaceSizeInByte));
 
 	checkCudaErrors(cudaDeviceSynchronize());
 
@@ -326,47 +182,40 @@ void *d_cudnn_workspace = nullptr;
 					biasTensorDescriptor, d_bias, &beta, outputDataTensor,
 					d_output_data));
 
-	//池化
+	//池化设定
+	alpha = 1.0f, beta = 0.0f;
 	cudnnPoolingDescriptor_t poolingDescriptor;
 	cudnnTensorDescriptor_t poolingDataTensorDescriptor;
+	OutputDim poolingOutputDim;
 	int poolingWindowHeight = 3;
 	int poolingWindowWidth = 3;
 	int poolingVerticalStride = 1;
 	int poolingHorizontalStride = 1;
-	float * d_pooling_output_data;
+	float * d_pooling_output_data = network.createPoolingLayer(d_output_data,
+			&outputDataTensor, &poolingDescriptor, &poolingDataTensorDescriptor,
+			&outputDim, poolingWindowHeight, poolingWindowWidth,
+			poolingVerticalStride, poolingHorizontalStride, &poolingOutputDim);
 
-	checkCudaErrors(
-			cudaMalloc(&d_pooling_output_data,
-					sizeof(float) * outputDim.outputFeaturemapsForEachImage
-							* ((outputDim.outputFeaturemapHeight
-									- poolingWindowHeight)
-									/ poolingHorizontalStride + 1)
-							* ((outputDim.outputFeaturemapWidth
-									- poolingWindowWidth)
-									/ poolingVerticalStride + 1)));
-
-	checkCUDNN(cudnnCreatePoolingDescriptor(&poolingDescriptor));
-	checkCUDNN(
-			cudnnSetPooling2dDescriptor(poolingDescriptor, CUDNN_POOLING_MAX,
-					poolingWindowHeight, poolingWindowWidth, 0, 0,
-					poolingVerticalStride, poolingHorizontalStride));
-
-	checkCUDNN(cudnnCreateTensorDescriptor(&poolingDataTensorDescriptor));
-	checkCUDNN(
-			cudnnSetTensor4dDescriptor(poolingDataTensorDescriptor,
-					CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, outputDim.outputImages,
-					outputDim.outputFeaturemapsForEachImage,
-					((outputDim.outputFeaturemapHeight - poolingWindowHeight)
-							/ poolingHorizontalStride + 1),
-					((outputDim.outputFeaturemapWidth - poolingWindowWidth)
-							/ poolingVerticalStride + 1)));
-
+	//池化运算
 	checkCUDNN(
 			cudnnPoolingForward(cudnnHandle, poolingDescriptor, &alpha,
 					outputDataTensor, d_output_data, &beta,
 					poolingDataTensorDescriptor, d_pooling_output_data));
 
-	//d_output_data输出数据回传
+	//d_pooling_output_data数据回传
+	float * h_pooling_output_data = new float[outputDim.outputImages
+			* outputDim.outputFeaturemapsForEachImage
+			* poolingOutputDim.outputFeaturemapHeight
+			* poolingOutputDim.outputFeaturemapWidth];
+	checkCudaErrors(
+			cudaMemcpyAsync(h_pooling_output_data, d_pooling_output_data,
+					sizeof(float) * outputDim.outputImages
+							* outputDim.outputFeaturemapsForEachImage
+							* poolingOutputDim.outputFeaturemapHeight
+							* poolingOutputDim.outputFeaturemapWidth,
+					cudaMemcpyDeviceToHost));
+
+	//d_output_data数据回传
 	float * h_output_data =
 			new float[outputDim.outputImages
 					* outputDim.outputFeaturemapsForEachImage
@@ -381,8 +230,10 @@ void *d_cudnn_workspace = nullptr;
 					cudaMemcpyDeviceToHost));
 
 	//测试用例1
-	TestCase::TestCase1(h_input_data, h_kernel, h_bias, h_output_data);
+	TestCase::TestCase1(h_input_data, h_kernel, h_bias, h_output_data,
+			h_pooling_output_data);
 
+	//destroy section
 	//checkCUDNN(cudnnDestroyTensorDescriptor(redChannelDataTensor));
 
 }
