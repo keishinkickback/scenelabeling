@@ -13,16 +13,19 @@
 #include <algorithm>
 
 void KernelGenerator::initializeKernelUsingXavierAlgorithm(int kernelHeight,
-		int kernelWeight, int channelNumber, std::vector<float> * kernel) {
+		int kernelWeight, int outputFeaturemaps, std::vector<float> * kernel) {
 
 	//随机数生成器初始化
 	std::random_device rd;
 	//使用马特赛特旋转演算法伪随机数生成器
 	std::mt19937 generator(rd());
 
-	float core = sqrt(3.0f / (kernelHeight * kernelWeight * channelNumber));
+	//Xavier算法,分母为kernel的输出维度
+	//参考：http://caffe.berkeleyvision.org/doxygen/classcaffe_1_1XavierFiller.html
+	float scale = sqrt(
+			3.0f / (kernelHeight * kernelWeight * outputFeaturemaps));
 
-	std::uniform_real_distribution<> distribution(-core, core);
+	std::uniform_real_distribution<> distribution(-scale, scale);
 
 	for (int i = 0; i < kernel->size(); i++) {
 		kernel->at(i) = static_cast<float>(distribution(generator));
@@ -31,14 +34,12 @@ void KernelGenerator::initializeKernelUsingXavierAlgorithm(int kernelHeight,
 }
 
 void KernelGenerator::initializeBiasUsingXavierAlgorithm(int kernelHeight,
-		int kernelWeight, int channelNumber, std::vector<float> * bias) {
+		int kernelWeight, int outputFeaturemaps, std::vector<float> * bias) {
 
-	//随机数生成器初始化
 	std::random_device rd;
-	//使用马特赛特旋转演算法伪随机数生成器
 	std::mt19937 generator(rd());
 
-	float core = sqrt(3.0f / (kernelHeight * kernelWeight * channelNumber));
+	float core = sqrt(3.0f / (kernelHeight * kernelWeight * outputFeaturemaps));
 
 	std::uniform_real_distribution<> distribution(-core, core);
 

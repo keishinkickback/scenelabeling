@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <algorithm>
+#include <math.h>
 
 float* Utility::VectorToArray(std::vector<float> * input) {
 
@@ -24,8 +25,33 @@ float* Utility::VectorToArray(std::vector<float> * input) {
 	return array;
 }
 
-void Utility::printDynamicArray(float * array, int length) {
+void Utility::PrintDynamicArray(float * array, int length) {
 	for (int i = 0; i < length; i++) {
 		std::cout << array[i] << std::endl;
 	}
+}
+
+std::vector<std::vector<float> > Utility::ArrayToMartix(float * array,
+		int height, int width) {
+
+	int arrayIndex = 0;
+	std::vector<std::vector<float> > martix;
+
+	for (int y = 0; y < height; y++) {
+
+		std::vector<float> row;
+
+		for (int x = 0; x < width; x++) {
+
+			row.push_back(array[arrayIndex]);
+			arrayIndex++;
+
+		}
+
+		martix.push_back(row);
+
+	}
+
+	return martix;
+
 }

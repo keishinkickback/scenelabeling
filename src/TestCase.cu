@@ -12,8 +12,9 @@
 #include <string.h>
 #include <algorithm>
 
-void TestCase::TestCase1(float * data, float * kernel, float * bias, float * output_data,
-		float * pooling_output_data) {
+void TestCase::TestCase1(float * data, float * kernel, float * bias,
+		float * output_data, float * pooling_output_data,
+		float * activation_output_data) {
 
 	float sum1 = data[0] * kernel[0];
 	float sum2 = data[1] * kernel[1];
@@ -37,5 +38,10 @@ void TestCase::TestCase1(float * data, float * kernel, float * bias, float * out
 			<< output_data[1077] << " " << output_data[1078] << std::endl;
 	std::cout << " GPU max pooling result : " << pooling_output_data[0]
 			<< std::endl;
+
+	for (int i = 0; i < 287296; i++) {
+		std::cout << i << " Original : " << pooling_output_data[i] << " ReLU : "
+				<< activation_output_data[i] << std::endl;
+	}
 
 }

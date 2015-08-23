@@ -23,8 +23,10 @@
 class Utility {
 
 public:
-	static float* VectorToArray(std::vector<float> * input);
-	static void printDynamicArray(float * array, int length);
+	static float * VectorToArray(std::vector<float> * input);
+	static void PrintDynamicArray(float * array, int length);
+	static std::vector<std::vector<float> > ArrayToMartix(float * array,
+			int width, int height);
 };
 
 #endif /* UTILITY_H_ */
