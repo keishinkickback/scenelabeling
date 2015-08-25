@@ -33,15 +33,15 @@ void KernelGenerator::initializeKernelUsingXavierAlgorithm(int kernelHeight,
 
 }
 
-void KernelGenerator::initializeBiasUsingXavierAlgorithm(int kernelHeight,
-		int kernelWeight, int outputFeaturemaps, std::vector<float> * bias) {
+void KernelGenerator::initializeBiasUsingXavierAlgorithm(int outputFeaturemaps,
+		std::vector<float> * bias) {
 
 	std::random_device rd;
 	std::mt19937 generator(rd());
 
-	float core = sqrt(3.0f / (kernelHeight * kernelWeight * outputFeaturemaps));
+	float scale = sqrt(3.0f / (outputFeaturemaps));
 
-	std::uniform_real_distribution<> distribution(-core, core);
+	std::uniform_real_distribution<> distribution(-scale, scale);
 
 	for (int i = 0; i < bias->size(); i++) {
 		bias->at(i) = static_cast<float>(distribution(generator));

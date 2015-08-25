@@ -25,10 +25,11 @@ class KernelGenerator {
 public:
 
 	void initializeKernelUsingXavierAlgorithm(int kernelHeight,
-			int kernelWeight, int channelNumber, std::vector<float> * kernel);
+			int kernelWeight, int outputFeaturemaps,
+			std::vector<float> * kernel);
 
-	void initializeBiasUsingXavierAlgorithm(int kernelHeight, int kernelWeight,
-			int channelNumber, std::vector<float> * bias);
+	void initializeBiasUsingXavierAlgorithm(int outputFeaturemaps,
+			std::vector<float> * bias);
 
 };
 

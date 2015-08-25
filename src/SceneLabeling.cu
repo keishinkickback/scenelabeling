@@ -78,9 +78,8 @@ public:
 		//偏置项初始化
 		//与卷积核生成采用同样的方法同样的数量
 		float * h_bias;
-		std::vector<float> bias(kernelHeight * kernelWidth);
-		generator.initializeBiasUsingXavierAlgorithm(kernelHeight, kernelWidth,
-				outputFeaturemaps, &bias);
+		std::vector<float> bias(outputFeaturemaps);
+		generator.initializeBiasUsingXavierAlgorithm(outputFeaturemaps, &bias);
 		h_bias = Utility::VectorToArray(&bias);
 
 		//神经网络初始化
@@ -129,6 +128,7 @@ public:
 						inputDataTensorDescriptor, kernelDescriptor,
 						convolutionDescriptor, outputDataTensorDescriptor,
 						algorithm, &workspaceSizeInByte));
+
 		void *d_cudnn_workspace = nullptr;
 		checkCudaErrors(cudaMalloc(&d_cudnn_workspace, workspaceSizeInByte));
 
@@ -211,39 +211,6 @@ public:
 								* outputDim.outputFeaturemapWidth,
 						cudaMemcpyDeviceToHost));
 
-		std::vector<std::vector<float> > martix = Utility::ArrayToMartix(h_output_data,outputDim.outputFeaturemapHeight,outputDim.outputFeaturemapWidth);
-
-		int gpuIndex = 0;
-
-		//TODO
-		for (int x = ( kernelWidth - 1) / 2 + 1;x < outputDim.outputFeaturemapWidth - ( kernelWidth - 1) / 2;x++ ){
-
-			for (int y = ( kernelHeight - 1) / 2 + 1;y < outputDim.outputFeaturemapHeight - ( kernelHeight - 1) / 2;y++ ){
-
-				float sum = 0;
-
-				for(int kernelIndex = 0;kernelIndex < kernelWidth * kernelHeight;kernelIndex ++  ){
-
-					for (int windowX = x - ( kernelWidth - 1) / 2;windowX <= x + ( kernelWidth - 1) / 2;windowX++ ){
-
-						for (int windowY = y - ( kernelHeight - 1) / 2;windowY <= y + ( kernelHeight - 1) / 2;windowY++ ){
-
-							sum += martix.at(windowX).at(windowY) * h_kernel[gpuIndex];
-
-							gpuIndex++;
-
-						}
-					}
-
-				}
-
-				std::cout << "CPU result:" << sum << " GPU result: " << h_output_data[gpuIndex] << std::endl;
-				gpuIndex ++;
-
-			}
-
-		}
-
 		//d_pooling_output_data数据回传
 		float * h_pooling_output_data = new float[poolingOutputDim.outputImages
 				* poolingOutputDim.outputFeaturemapsForEachImage
@@ -258,10 +225,11 @@ public:
 						cudaMemcpyDeviceToHost));
 
 		//d_activation_output_data数据回传
-		float * h_activation_output_data = new float[poolingOutputDim.outputImages
-				* poolingOutputDim.outputFeaturemapsForEachImage
-				* poolingOutputDim.outputFeaturemapHeight
-				* poolingOutputDim.outputFeaturemapWidth];
+		float * h_activation_output_data =
+				new float[poolingOutputDim.outputImages
+						* poolingOutputDim.outputFeaturemapsForEachImage
+						* poolingOutputDim.outputFeaturemapHeight
+						* poolingOutputDim.outputFeaturemapWidth];
 		checkCudaErrors(
 				cudaMemcpyAsync(h_activation_output_data,
 						d_activation_output_data,
@@ -271,9 +239,10 @@ public:
 								* poolingOutputDim.outputFeaturemapWidth,
 						cudaMemcpyDeviceToHost));
 
-		//测试用例1
-//		TestCase::TestCase1(h_input_data, h_kernel, h_bias, h_output_data,
-//				h_pooling_output_data, h_activation_output_data);
+		//测试用例：卷积运算测试
+		TestCase::TestbedOfConvolutionMethodForOneOutputFeaturemap(h_input_data, h_output_data,
+				h_kernel, h_bias[0], imageHeight, imageWidth, kernelHeight,
+				kernelWidth);
 
 		//Destroy section
 		checkCUDNN(cudnnDestroyTensorDescriptor(inputDataTensorDescriptor));
@@ -290,8 +259,6 @@ public:
 };
 
 int main() {
-
-	std::cout << "main method. " << std::endl;
 
 	//first group
 	int batchSize = 1;

@@ -11,8 +11,16 @@
 class TestCase {
 
 public:
-	static void TestCase1(float * data, float * kernel, float * bias,
-			float * output_data, float * pooling_output_data,float * activation_output_data);
+
+	static void TestbedOfConvolutionMethodForOneOutputFeaturemap(
+			float * inputData, float * gpuData, float * kernel, float bias,
+			int inputFeatureHeight, int inputFeaturemapWidth, int kernelHeight,
+			int kernelWidth);
+
+	static void TestbedOfMaxPoolingMethodForOneOutputFeaturemap(
+			float * inputData, float * gpuData, int inputFeatureHeight,
+			int inputFeaturemapWidth, int windowHeight, int windowWidth);
+
 };
 
 #endif /* TESTCASE_H_ */

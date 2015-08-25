@@ -25,7 +25,7 @@ class Utility {
 public:
 	static float * VectorToArray(std::vector<float> * input);
 	static void PrintDynamicArray(float * array, int length);
-	static std::vector<std::vector<float> > ArrayToMartix(float * array,
+	static std::vector<std::vector<float> > ArrayToMatrix(float * array,
 			int width, int height);
 };
 

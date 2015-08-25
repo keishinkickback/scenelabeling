@@ -11,37 +11,43 @@
 #include <unistd.h>
 #include <string.h>
 #include <algorithm>
+#include "Utility.h"
 
-void TestCase::TestCase1(float * data, float * kernel, float * bias,
-		float * output_data, float * pooling_output_data,
-		float * activation_output_data) {
+void TestCase::TestbedOfConvolutionMethodForOneOutputFeaturemap(
+		float * inputData, float * gpuData, float * kernel, float bias,
+		int inputFeatureHeight, int inputFeaturemapWidth, int kernelHeight,
+		int kernelWidth) {
 
-	float sum1 = data[0] * kernel[0];
-	float sum2 = data[1] * kernel[1];
-	float sum3 = data[2] * kernel[2];
-	float sum4 = data[540] * kernel[3];
-	float sum5 = data[541] * kernel[4];
-	float sum6 = data[542] * kernel[5];
-	float sum7 = data[1080] * kernel[6];
-	float sum8 = data[1081] * kernel[7];
-	float sum9 = data[1082] * kernel[8];
+	std::vector<std::vector<float> > matrix = Utility::ArrayToMatrix(inputData,
+			inputFeatureHeight, inputFeaturemapWidth);
 
-	std::cout << " CPU result : "
-			<< sum1 + sum2 + sum3 + sum4 + sum5 + sum6 + sum7 + sum8 + sum9
-			<< std::endl;
-	std::cout << " bias unit : " << bias[0] << std::endl;
-	std::cout << " GPU result : " << output_data[0] << std::endl;
-	std::cout << " output data value : " << output_data[0] << " "
-			<< output_data[1] << " " << output_data[2] << " "
-			<< output_data[538] << " " << output_data[539] << " "
-			<< output_data[540] << " " << output_data[1076] << " "
-			<< output_data[1077] << " " << output_data[1078] << std::endl;
-	std::cout << " GPU max pooling result : " << pooling_output_data[0]
-			<< std::endl;
+	int gpuIndex = 0;
+	int kernelIndex, biasIndex;
+	float windowValue = 0;
 
-	for (int i = 0; i < 287296; i++) {
-		std::cout << i << " Original : " << pooling_output_data[i] << " ReLU : "
-				<< activation_output_data[i] << std::endl;
+	for (int y = 0; y < inputFeatureHeight - kernelHeight + 1; y++) {
+		for (int x = 0; x < inputFeaturemapWidth - kernelWidth + 1; x++) {
+
+			kernelIndex = 0;
+			biasIndex = 0;
+			windowValue = 0;
+
+			for (int windowY = y; windowY < y + kernelHeight; windowY++) {
+				for (int windowX = x; windowX < x + kernelWidth; windowX++) {
+					windowValue += matrix.at(windowY).at(windowX)
+							* kernel[kernelIndex];
+					kernelIndex++;
+					biasIndex++;
+				}
+			}
+
+			std::cout << " [ " << y << " " << x << " ] " << " CPU value : "
+					<< windowValue + bias << " | GPU value : "
+					<< gpuData[gpuIndex] << std::endl;
+			gpuIndex++;
+
+		}
+
 	}
 
 }

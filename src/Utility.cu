@@ -31,11 +31,11 @@ void Utility::PrintDynamicArray(float * array, int length) {
 	}
 }
 
-std::vector<std::vector<float> > Utility::ArrayToMartix(float * array,
+std::vector<std::vector<float> > Utility::ArrayToMatrix(float * array,
 		int height, int width) {
 
 	int arrayIndex = 0;
-	std::vector<std::vector<float> > martix;
+	std::vector<std::vector<float> > matrix;
 
 	for (int y = 0; y < height; y++) {
 
@@ -48,10 +48,10 @@ std::vector<std::vector<float> > Utility::ArrayToMartix(float * array,
 
 		}
 
-		martix.push_back(row);
+		matrix.push_back(row);
 
 	}
 
-	return martix;
+	return matrix;
 
 }
