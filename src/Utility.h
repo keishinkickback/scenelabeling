@@ -27,6 +27,7 @@ public:
 	static void PrintDynamicArray(float * array, int length);
 	static std::vector<std::vector<float> > ArrayToMatrix(float * array,
 			int width, int height);
+	static bool floatIsEqual(float a,float b);
 };
 
 #endif /* UTILITY_H_ */

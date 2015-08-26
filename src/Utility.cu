@@ -55,3 +55,17 @@ std::vector<std::vector<float> > Utility::ArrayToMatrix(float * array,
 	return matrix;
 
 }
+
+bool Utility::floatIsEqual(float a, float b) {
+
+	if (abs(a - b) <= 0.00001f) {
+
+		return true;
+
+	} else {
+
+		return false;
+
+	}
+
+}

@@ -18,7 +18,7 @@ public:
 			int kernelWidth);
 
 	static void TestbedOfMaxPoolingMethodForOneOutputFeaturemap(
-			float * inputData, float * gpuData, int inputFeatureHeight,
+			float * inputData, float * gpuData, int inputFeaturemapHeight,
 			int inputFeaturemapWidth, int windowHeight, int windowWidth);
 
 };

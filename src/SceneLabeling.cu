@@ -240,9 +240,14 @@ public:
 						cudaMemcpyDeviceToHost));
 
 		//测试用例：卷积运算测试
-		TestCase::TestbedOfConvolutionMethodForOneOutputFeaturemap(h_input_data, h_output_data,
-				h_kernel, h_bias[0], imageHeight, imageWidth, kernelHeight,
-				kernelWidth);
+		TestCase::TestbedOfConvolutionMethodForOneOutputFeaturemap(h_input_data,
+				h_output_data, h_kernel, h_bias[0], imageHeight, imageWidth,
+				kernelHeight, kernelWidth);
+
+		TestCase::TestbedOfMaxPoolingMethodForOneOutputFeaturemap(h_output_data,
+				h_pooling_output_data, outputDim.outputFeaturemapHeight,
+				outputDim.outputFeaturemapWidth, poolingWindowHeight,
+				poolingWindowWidth);
 
 		//Destroy section
 		checkCUDNN(cudnnDestroyTensorDescriptor(inputDataTensorDescriptor));
