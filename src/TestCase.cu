@@ -45,10 +45,11 @@ void TestCase::TestbedOfConvolutionMethodForOneOutputFeaturemap(
 				}
 			}
 
-			std::cout << " conv [ " << y << " " << x << " ] |" << " CPU value : "
-					<< windowValue + bias << " | GPU value : "
-					<< gpuData[gpuIndex] << " | Is Equal : "
-					<< Utility::floatIsEqual(windowValue + bias,
+			std::cout << " conv [ " << y << " " << x << " ] |"
+					<< " CPU value : " << windowValue + bias
+					<< " | GPU value : " << gpuData[gpuIndex]
+					<< " | Is Equal : "
+					<< Utility::FloatIsEqual(windowValue + bias,
 							gpuData[gpuIndex]) << std::endl;
 			gpuIndex++;
 
@@ -87,10 +88,10 @@ void TestCase::TestbedOfMaxPoolingMethodForOneOutputFeaturemap(
 				}
 			}
 
-			std::cout << " mxpo [ " << y << " " << x << " ] |" << " CPU value : "
-					<< maxValue << " | GPU value : " << gpuData[gpuIndex]
-					<< " | Is Equal : "
-					<< Utility::floatIsEqual(maxValue, gpuData[gpuIndex])
+			std::cout << " mxpo [ " << y << " " << x << " ] |"
+					<< " CPU value : " << maxValue << " | GPU value : "
+					<< gpuData[gpuIndex] << " | Is Equal : "
+					<< Utility::FloatIsEqual(maxValue, gpuData[gpuIndex])
 					<< std::endl;
 			gpuIndex++;
 
@@ -102,3 +103,4 @@ void TestCase::TestbedOfMaxPoolingMethodForOneOutputFeaturemap(
 			<< std::endl;
 
 }
+

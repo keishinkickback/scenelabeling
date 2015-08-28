@@ -27,7 +27,7 @@ void KernelGenerator::initializeKernelUsingXavierAlgorithm(int kernelHeight,
 
 	std::uniform_real_distribution<> distribution(-scale, scale);
 
-	for (int i = 0; i < kernel->size(); i++) {
+	for (int i = 0; i < kernelHeight * kernelWeight; i++) {
 		kernel->at(i) = static_cast<float>(distribution(generator));
 	}
 

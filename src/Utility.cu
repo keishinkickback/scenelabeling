@@ -56,7 +56,7 @@ std::vector<std::vector<float> > Utility::ArrayToMatrix(float * array,
 
 }
 
-bool Utility::floatIsEqual(float a, float b) {
+bool Utility::FloatIsEqual(float a, float b) {
 
 	if (abs(a - b) <= 0.00001f) {
 
@@ -67,5 +67,27 @@ bool Utility::floatIsEqual(float a, float b) {
 		return false;
 
 	}
+
+}
+
+std::vector<float *> Utility::SplitArray(float * array, int part,
+		int stepLength) {
+
+	std::vector<float *> vector;
+
+	for (int i = 1; i <= part; i++) {
+
+		std::vector<float> subVector;
+
+		for (int j = (i - 1) * stepLength; j < i * stepLength; j++) {
+
+			subVector.push_back(array[j]);
+
+		}
+
+		vector.push_back(Utility::VectorToArray(&subVector));
+	}
+
+	return vector;
 
 }

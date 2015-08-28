@@ -70,10 +70,21 @@ public:
 		KernelGenerator generator;
 
 		float * h_kernel;
-		std::vector<float> kernel(kernelHeight * kernelWidth);
-		generator.initializeKernelUsingXavierAlgorithm(kernelHeight,
-				kernelWidth, outputFeaturemaps, &kernel);
-		h_kernel = Utility::VectorToArray(&kernel);
+
+		std::vector<float> kernels;
+
+		for (int i = 0; i < outputFeaturemaps; i++) {
+			std::vector<float> kernel(kernelHeight * kernelWidth);
+			generator.initializeKernelUsingXavierAlgorithm(kernelHeight,
+					kernelWidth, outputFeaturemaps, &kernel);
+			kernels.insert(kernels.end(), kernel.begin(), kernel.end());
+		}
+		h_kernel = Utility::VectorToArray(&kernels);
+
+		//TEST
+		std::cout << " size of kernel : " << kernels.size()
+				<< " with output featuremaps : " << outputFeaturemaps
+				<< std::endl;
 
 		//偏置项初始化
 		//与卷积核生成采用同样的方法同样的数量
@@ -81,6 +92,11 @@ public:
 		std::vector<float> bias(outputFeaturemaps);
 		generator.initializeBiasUsingXavierAlgorithm(outputFeaturemaps, &bias);
 		h_bias = Utility::VectorToArray(&bias);
+
+		//TEST
+		std::cout << " size of bias : " << bias.size()
+				<< " with output featuremaps : " << outputFeaturemaps
+				<< std::endl;
 
 		//神经网络初始化
 		CuNeuralNetwork network;
@@ -99,7 +115,9 @@ public:
 		//卷积操作设定
 		cudnnConvolutionDescriptor_t convolutionDescriptor;
 		checkCUDNN(cudnnCreateConvolutionDescriptor(&convolutionDescriptor));
-		//零填充的行数与列数：0,卷积的水平和垂直的滑动长度：1,x，y向上取样的比例尺：1
+		//零填充的行数与列数：0
+		//卷积的水平和垂直的滑动长度：1
+		//横、纵向上取样的比例尺：1
 		//不使用卷积操作，因为卷积操作要旋转卷积核，而这里不需要旋转，互相关就是无需旋转的卷积乘法。
 		checkCUDNN(
 				cudnnSetConvolution2dDescriptor(convolutionDescriptor, 0, 0, 1,
@@ -211,6 +229,61 @@ public:
 								* outputDim.outputFeaturemapWidth,
 						cudaMemcpyDeviceToHost));
 
+		//TEST 单fm多batch测试
+		std::cout << " output images : " << outputDim.outputImages
+				<< " output featuremaps for each image : "
+				<< outputDim.outputFeaturemapsForEachImage
+				<< " output featuremap height : "
+				<< outputDim.outputFeaturemapHeight
+				<< " output featuremap width "
+				<< outputDim.outputFeaturemapWidth << std::endl;
+
+//		for (int i = 0;
+//				i
+//						< outputDim.outputImages
+//								* outputDim.outputFeaturemapHeight
+//								* outputDim.outputFeaturemapWidth
+//								* outputDim.outputFeaturemapsForEachImage;
+//				i++) {
+//			std::cout << i << " | " << h_output_data[i] << std::endl;
+//		}
+
+		//数组分割
+		std::vector<float *> all_inputs = Utility::SplitArray(h_input_data,
+				batchSize * inputFeaturemaps, imageHeight * imageWidth);
+
+		std::vector<float *> all_outputs = Utility::SplitArray(h_output_data,
+				outputDim.outputImages
+						* outputDim.outputFeaturemapsForEachImage,
+				outputDim.outputFeaturemapHeight
+						* outputDim.outputFeaturemapWidth);
+
+		std::vector<float *> all_kernels = Utility::SplitArray(h_kernel,
+				outputFeaturemaps, kernelHeight * kernelWidth);
+
+		std::cout << h_kernel[0] << " " << h_kernel[8] << " | "
+				<< all_kernels.at(0)[0] << " " << all_kernels.at(0)[8]
+				<< std::endl;
+		std::cout << all_inputs.size() << " | " << all_outputs.size() << " | "
+				<< all_kernels.size() << std::endl;
+
+		int outputIndex = 0;
+
+		for (int i = 0; i < all_inputs.size(); i++) {
+
+			for (int j = 0; j < all_kernels.size(); j++) {
+
+				TestCase::TestbedOfConvolutionMethodForOneOutputFeaturemap(
+						all_inputs.at(i), all_outputs.at(outputIndex),
+						all_kernels.at(j), h_bias[j], imageHeight, imageWidth,
+						kernelHeight, kernelWidth);
+
+				outputIndex++;
+			}
+
+		}
+		//TEST END
+
 		//d_pooling_output_data数据回传
 		float * h_pooling_output_data = new float[poolingOutputDim.outputImages
 				* poolingOutputDim.outputFeaturemapsForEachImage
@@ -239,15 +312,16 @@ public:
 								* poolingOutputDim.outputFeaturemapWidth,
 						cudaMemcpyDeviceToHost));
 
-		//测试用例：卷积运算测试
-		TestCase::TestbedOfConvolutionMethodForOneOutputFeaturemap(h_input_data,
-				h_output_data, h_kernel, h_bias[0], imageHeight, imageWidth,
-				kernelHeight, kernelWidth);
-
-		TestCase::TestbedOfMaxPoolingMethodForOneOutputFeaturemap(h_output_data,
-				h_pooling_output_data, outputDim.outputFeaturemapHeight,
-				outputDim.outputFeaturemapWidth, poolingWindowHeight,
-				poolingWindowWidth);
+//		//测试用例：卷积运算测试
+//		TestCase::TestbedOfConvolutionMethodForOneOutputFeaturemap(h_input_data,
+//				h_output_data, h_kernel, h_bias[0], imageHeight, imageWidth,
+//				kernelHeight, kernelWidth);
+//
+//		//测试用例：max pooling测试
+//		TestCase::TestbedOfMaxPoolingMethodForOneOutputFeaturemap(h_output_data,
+//				h_pooling_output_data, outputDim.outputFeaturemapHeight,
+//				outputDim.outputFeaturemapWidth, poolingWindowHeight,
+//				poolingWindowWidth);
 
 		//Destroy section
 		checkCUDNN(cudnnDestroyTensorDescriptor(inputDataTensorDescriptor));
@@ -261,12 +335,69 @@ public:
 		return h_activation_output_data;
 	}
 
+	int main_1_to_1() {
+
+		//first group
+		int batchSize = 1;
+		int imageHeight = 540;
+		int imageWidth = 540;
+		int kernelHeight = 3;
+		int kernelWidth = 3;
+		int poolingWindowHeight = 3;
+		int poolingWindowWidth = 3;
+		int inputFeaturemaps = 1;
+		int outputFeaturemaps = 1;
+
+		//读取图片到RGB三个通道
+		char imagePath[256];
+		getcwd(imagePath, 256);
+		strcat(imagePath, "/trainingset/");
+		strcat(imagePath, "train1.png");
+		std::vector<float> redChannel;
+		std::vector<float> greenChannel;
+		std::vector<float> blueChannel;
+		float * h_input_data;
+		ImageProcessor processor;
+		processor.readRGBImage(imagePath, &redChannel, &greenChannel,
+				&blueChannel);
+		redChannel = processor.imageChannelNormalization(&redChannel);
+		greenChannel = processor.imageChannelNormalization(&greenChannel);
+		blueChannel = processor.imageChannelNormalization(&blueChannel);
+		h_input_data = Utility::VectorToArray(&redChannel);
+
+		//GPU设定
+		int GPUs;
+		checkCudaErrors(cudaGetDeviceCount(&GPUs));
+		if (GPUs > 0) {
+			checkCudaErrors(cudaSetDevice(0));
+		} else {
+			return 0;
+		}
+
+		//cudnn初始化
+		cudnnHandle_t cudnnHandle = NULL;
+		cudnnCreate(&cudnnHandle);
+
+		SceneLabeling sceneLabeling;
+
+		float * first_group_output_data =
+				sceneLabeling.convolution_maxpooling_sigmoid(cudnnHandle,
+						h_input_data, batchSize, imageHeight, imageWidth,
+						kernelHeight, kernelWidth, poolingWindowHeight,
+						poolingWindowWidth, inputFeaturemaps,
+						outputFeaturemaps);
+
+		return 1;
+
+	}
+
 };
 
+//int main_1_to_2() {
 int main() {
 
 	//first group
-	int batchSize = 1;
+	int batchSize = 3;
 	int imageHeight = 540;
 	int imageWidth = 540;
 	int kernelHeight = 3;
@@ -274,7 +405,7 @@ int main() {
 	int poolingWindowHeight = 3;
 	int poolingWindowWidth = 3;
 	int inputFeaturemaps = 1;
-	int outputFeaturemaps = 1;
+	int outputFeaturemaps = 2;
 
 	//读取图片到RGB三个通道
 	char imagePath[256];
@@ -284,13 +415,29 @@ int main() {
 	std::vector<float> redChannel;
 	std::vector<float> greenChannel;
 	std::vector<float> blueChannel;
-	float * h_red_channel_input_data;
+
+	std::vector<float> input_data;
+
+	float * h_input_data;
 	ImageProcessor processor;
 	processor.readRGBImage(imagePath, &redChannel, &greenChannel, &blueChannel);
 	redChannel = processor.imageChannelNormalization(&redChannel);
 	greenChannel = processor.imageChannelNormalization(&greenChannel);
 	blueChannel = processor.imageChannelNormalization(&blueChannel);
-	h_red_channel_input_data = Utility::VectorToArray(&redChannel);
+	//red_channel_data = Utility::VectorToArray(&redChannel);
+	//green_channel_data = Utility::VectorToArray(&greenChannel);
+
+	//input_data =
+	input_data.insert(input_data.end(), redChannel.begin(), redChannel.end());
+	input_data.insert(input_data.end(), greenChannel.begin(),
+			greenChannel.end());
+	input_data.insert(input_data.end(), blueChannel.begin(), blueChannel.end());
+
+	std::cout << " size of input data : " << input_data.size()
+			<< " with input feature map : " << inputFeaturemaps
+			<< " and batch size : " << batchSize << std::endl;
+
+	h_input_data = Utility::VectorToArray(&input_data);
 
 	//GPU设定
 	int GPUs;
@@ -309,8 +456,10 @@ int main() {
 
 	float * first_group_output_data =
 			sceneLabeling.convolution_maxpooling_sigmoid(cudnnHandle,
-					h_red_channel_input_data, batchSize, imageHeight,
-					imageWidth, kernelHeight, kernelWidth, poolingWindowHeight,
+					h_input_data, batchSize, imageHeight, imageWidth,
+					kernelHeight, kernelWidth, poolingWindowHeight,
 					poolingWindowWidth, inputFeaturemaps, outputFeaturemaps);
+
+	return 1;
 
 }
