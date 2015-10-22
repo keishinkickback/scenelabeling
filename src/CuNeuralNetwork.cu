@@ -1,4 +1,4 @@
-#include "CuNeuralNetwork.h"
+#include "includes/CuNeuralNetwork.h"
 
 #include <iostream>
 #include <sstream>
@@ -42,7 +42,7 @@
     }                                                                  \
 } while(0)
 
-float * CuNeuralNetwork::createInputDataLayer(float * h_input_data,
+float * CuNeuralNetwork::initializeInputDataLayer(float * h_input_data,
 		cudnnTensorDescriptor_t * inputDataTensorDescriptor, int batchSize,
 		int inputFeaturemaps, int imageHeight, int imageWidth) {
 
@@ -68,7 +68,7 @@ float * CuNeuralNetwork::createInputDataLayer(float * h_input_data,
 
 }
 
-float * CuNeuralNetwork::createKernel(float * h_kernel,
+float * CuNeuralNetwork::initializeKernels(float * h_kernel,
 		cudnnFilterDescriptor_t * kernelDescriptor, int inputFeaturemaps,
 		int outputFeaturemaps, int kernelHeight, int kernelWidth) {
 
@@ -80,22 +80,23 @@ float * CuNeuralNetwork::createKernel(float * h_kernel,
 	float *d_kernel;
 	checkCudaErrors(
 			cudaMalloc(&d_kernel,
-					sizeof(float) * outputFeaturemaps * kernelHeight
-							* kernelWidth));
+					sizeof(float) * outputFeaturemaps * inputFeaturemaps
+							* kernelHeight * kernelWidth));
 	checkCudaErrors(
 			cudaMemcpyAsync(d_kernel, h_kernel,
-					sizeof(float) * outputFeaturemaps * kernelHeight
-							* kernelWidth, cudaMemcpyHostToDevice));
+					sizeof(float) * outputFeaturemaps * inputFeaturemaps
+							* kernelHeight * kernelWidth,
+					cudaMemcpyHostToDevice));
 	return d_kernel;
 
 }
 
-float * CuNeuralNetwork::createOutputDataLayer(
+float * CuNeuralNetwork::initializeOutputDataLayer(
 		cudnnTensorDescriptor_t * inputDataTensorDescriptor,
 		cudnnFilterDescriptor_t * kernelDescriptor,
 		cudnnConvolutionDescriptor_t * convolutionDescriptor,
 		cudnnTensorDescriptor_t * outputDataTensorDescriptor,
-		OutputDim * outputDim) {
+		cudnnOutputDim * outputDim) {
 
 	checkCUDNN(
 			cudnnGetConvolution2dForwardOutputDim(*convolutionDescriptor,
@@ -151,13 +152,13 @@ float * CuNeuralNetwork::addBiasUnits(float * h_bias,
 
 }
 
-float * CuNeuralNetwork::createPoolingLayer(float * d_output_data,
+float * CuNeuralNetwork::initializePoolingLayer(float * d_output_data,
 		cudnnTensorDescriptor_t * inputDataTensorDescriptor,
 		cudnnPoolingDescriptor_t * poolingDescriptor,
 		cudnnTensorDescriptor_t * poolingDataTensorDescriptor,
-		OutputDim * outputDim, int poolingWindowHeight, int poolingWindowWidth,
-		int poolingVerticalStride, int poolingHorizontalStride,
-		OutputDim * poolingOutputDim) {
+		cudnnOutputDim * outputDim, int poolingWindowHeight,
+		int poolingWindowWidth, int poolingVerticalStride,
+		int poolingHorizontalStride, cudnnOutputDim * poolingOutputDim) {
 
 	float * d_pooling_output_data;
 	int poolingOutputDataHeight = (outputDim->outputFeaturemapHeight
@@ -211,3 +212,42 @@ float * CuNeuralNetwork::createPoolingLayer(float * d_output_data,
 
 }
 
+float * computeFullconnectedDataLayer(
+		cublasHandle_t cublasHandle,
+		float * d_input_data,
+		float * d_kernel,
+		float * d_bias,
+		float * d_ones_vector,
+		int outputFeaturemapLength,
+		int inputFeaturemaps,
+		int inputFeaturemapHeight, int inputFeaturemapWidth) {
+
+	float * d_output_data;
+
+//	int featuremapsLength = inputFeaturemapHeight * inputFeaturemapWidth
+//			* inputFeaturemaps;
+//
+//	checkCudaErrors(
+//			cudaMalloc((void** ) &d_output_data,
+//					outputFeaturemaps * sizeof(float)));
+//
+//	checkCudaErrors(
+//			cudaMemset(d_output_data, 0,
+//					outputFeaturemapLength * sizeof(float)));
+//
+//	float alpha = 1.0;
+//	float beta = 0;
+//
+//	//全连接运算
+//	checkCudaErrors(
+//			cublasSgemm(cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N, outputFeaturemaps, 1, featuremapsLength, &alpha, d_input_data, featuremapsLength, d_kernel, featuremapsLength, &beta, d_output_data, outputFeaturemaps));
+//
+//	//加上偏置项
+//	//d_ones_vector应为1*1
+//	beta = 1;
+//	checkCudaErrors(
+//			cublasSgemm(cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N, outputFeaturemaps, 1, 1, &alpha, d_bias, featuremapsLength, d_ones_vector, featuremapsLength, &beta, d_output_data, outputFeaturemaps));
+
+	return d_output_data;
+
+}

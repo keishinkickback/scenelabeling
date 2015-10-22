@@ -23,12 +23,18 @@
 class Utility {
 
 public:
-	static float * VectorToArray(std::vector<float> * input);
+	static float * VectorToDynamicArray(std::vector<float> * input);
 	static void PrintDynamicArray(float * array, int length);
 	static std::vector<std::vector<float> > ArrayToMatrix(float * array,
 			int width, int height);
 	static bool FloatIsEqual(float a, float b);
 	static std::vector<float *> SplitArray(float * array, int part, int step);
+	static void ZScoreNormalization(std::vector<float> &vector);
+	static void MinMaxNormalization(std::vector<float> &vector);
+	static float * AllocUnifiedMemory(float * h_data, int dataLength,
+			bool needSync);
+	static float * HostToDevice(float * h_data, int length);
+	static float * DeviceToHost(float * d_data, int length);
 };
 
 #endif /* UTILITY_H_ */

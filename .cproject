@@ -36,6 +36,7 @@
 								<option id="nvcc.linker.option.cudart.1419508111" name="CUDA Runtime Library:" superClass="nvcc.linker.option.cudart" value="nvcc.linker.option.cudart.shared" valueType="enumerated"/>
 								<option id="nvcc.linker.option.libs.721442986" name="Libraries (-l)" superClass="nvcc.linker.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="freeimageplus"/>
+									<listOptionValue builtIn="false" value="cublas"/>
 									<listOptionValue builtIn="false" value="cudnn"/>
 								</option>
 								<option id="nvcc.linker.option.paths.1257484367" name="Library search path (-L)" superClass="nvcc.linker.option.paths" valueType="libPaths">

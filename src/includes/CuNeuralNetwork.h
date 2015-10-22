@@ -11,7 +11,7 @@
 #include <cuda_runtime.h>
 #include <cudnn.h>
 
-struct OutputDim {
+struct cudnnOutputDim {
 
 public:
 
@@ -19,39 +19,38 @@ public:
 	int outputFeaturemapsForEachImage;
 	int outputFeaturemapHeight;
 	int outputFeaturemapWidth;
-
 };
 
 class CuNeuralNetwork {
 
 public:
 
-	float * createInputDataLayer(float * h_input_data,
+	float * initializeInputDataLayer(float * h_input_data,
 			cudnnTensorDescriptor_t * inputDataTensorDescriptor, int batchSize,
 			int inputFeaturemaps, int imageHeight, int imageWidth);
 
-	float * createKernel(float * h_kernel,
+	float * initializeKernels(float * h_kernel,
 			cudnnFilterDescriptor_t * kernelDescriptor, int inputFeaturemaps,
 			int outputFeaturemaps, int kernelHeight, int kernelWidth);
 
-	float * createOutputDataLayer(
+	float * initializeOutputDataLayer(
 			cudnnTensorDescriptor_t * inputDataTensorDescriptor,
 			cudnnFilterDescriptor_t * kernelDescriptor,
 			cudnnConvolutionDescriptor_t * convolutionDescriptor,
 			cudnnTensorDescriptor_t * outputDataTensorDescriptor,
-			OutputDim * outputDim);
+			cudnnOutputDim * outputDim);
 
 	float * addBiasUnits(float * h_bias,
 			cudnnTensorDescriptor_t * biasTensorDescriptor,
 			int outputFeaturemaps, int kernelHeight, int kernelWidth);
 
-	float * createPoolingLayer(float * d_output_data,
+	float * initializePoolingLayer(float * d_output_data,
 			cudnnTensorDescriptor_t * inputDataTensorDescriptor,
 			cudnnPoolingDescriptor_t * poolingDescriptor,
 			cudnnTensorDescriptor_t * poolingDataTensorDescriptor,
-			OutputDim * outputDim, int poolingWindowHeight,
+			cudnnOutputDim * outputDim, int poolingWindowHeight,
 			int poolingWindowWidth, int poolingVerticalStride,
-			int poolingHorizontalStride, OutputDim * poolingOutputDim);
+			int poolingHorizontalStride, cudnnOutputDim * poolingOutputDim);
 
 };
 

@@ -4,16 +4,18 @@
 #include <FreeImage.h>
 #include <algorithm>
 
-#include "ImageProcessor.h"
+#include "includes/ImageProcessor.h"
 
-void ImageProcessor::readRGBImage(char *imagePath,
+void ImageProcessor::ReadRGBImage(char *imagePath,
 		std::vector<float> *redChannel, std::vector<float> *greenChannel,
 		std::vector<float> *blueChannel) {
 
-	FreeImage_Initialise (TRUE);
+	FreeImage_Initialise(TRUE);
 
 	FIBITMAP* fib;
-	fib = FreeImage_Load(FIF_PNG, imagePath, PNG_DEFAULT);
+
+	FREE_IMAGE_FORMAT format = FreeImage_GetFileType(imagePath);
+	fib = FreeImage_Load(format, imagePath);
 	int width = FreeImage_GetWidth(fib);
 	int height = FreeImage_GetHeight(fib);
 
@@ -38,24 +40,4 @@ void ImageProcessor::readRGBImage(char *imagePath,
 
 	FreeImage_Unload(fib);
 	FreeImage_DeInitialise();
-}
-
-std::vector<float> ImageProcessor::imageChannelNormalization(
-		std::vector<float> *channel) {
-
-	float maxColorChannel = *std::max_element(channel->begin(), channel->end());
-	float minColorChannel = *std::min_element(channel->begin(), channel->end());
-
-	std::vector<float> result;
-
-	for (int i = 0; i < channel->size(); i++) {
-		result.push_back(
-				(channel->at(i) - minColorChannel)
-						/ (maxColorChannel - minColorChannel));
-	}
-
-	channel->clear();
-
-	return result;
-
 }
